@@ -3,6 +3,7 @@ const request = require("supertest");
 const prisma = require("../src/config/db");
 const { app } = require("../src/app");
 const { seedDatabase } = require("../prisma/seed");
+const recognitionService = require("../src/services/recognition.service");
 
 async function loginAs(email, password, forwardedFor) {
   const response = await request(app)
@@ -97,8 +98,8 @@ describe("Recognition API", () => {
 
   test("returns paginated public recognitions and supports department filtering", async () => {
     const accessToken = await loginAs(
-      "admin@recognitionhub.local",
-      "Admin@123",
+      "hr@recognitionhub.local",
+      "Hr@12345",
       "10.0.1.3",
     );
     const [elliot, casey, sam] = await Promise.all([
@@ -154,13 +155,13 @@ describe("Recognition API", () => {
       "Manager@123",
       "10.0.1.4",
     );
-    const adminToken = await loginAs(
-      "admin@recognitionhub.local",
-      "Admin@123",
+    const hrToken = await loginAs(
+      "hr@recognitionhub.local",
+      "Hr@12345",
       "10.0.1.5",
     );
-    const [admin, manager, elliot, casey, sam] = await Promise.all([
-      prisma.user.findUnique({ where: { email: "admin@recognitionhub.local" } }),
+    const [hr, manager, elliot, casey, sam] = await Promise.all([
+      prisma.user.findUnique({ where: { email: "hr@recognitionhub.local" } }),
       prisma.user.findUnique({ where: { email: "manager@recognitionhub.local" } }),
       prisma.user.findUnique({ where: { email: "elliot@recognitionhub.local" } }),
       prisma.user.findUnique({ where: { email: "casey@recognitionhub.local" } }),
@@ -170,21 +171,21 @@ describe("Recognition API", () => {
     await prisma.recognition.createMany({
       data: [
         {
-          sender_id: admin.id,
+          sender_id: hr.id,
           receiver_id: elliot.id,
           message: "Pending for engineering report",
           status: "pending",
           visibility: "public",
         },
         {
-          sender_id: admin.id,
+          sender_id: hr.id,
           receiver_id: sam.id,
           message: "Pending for sales employee",
           status: "pending",
           visibility: "public",
         },
         {
-          sender_id: admin.id,
+          sender_id: hr.id,
           receiver_id: casey.id,
           message: "Already reviewed",
           status: "approved",
@@ -205,12 +206,12 @@ describe("Recognition API", () => {
     );
     expect(managerResponse.body.items[0].receiver.manager_id).toBe(manager.id);
 
-    const adminResponse = await request(app)
+    const hrResponse = await request(app)
       .get("/api/recognitions/pending-review")
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set("Authorization", `Bearer ${hrToken}`);
 
-    expect(adminResponse.status).toBe(200);
-    expect(adminResponse.body.items).toHaveLength(2);
+    expect(hrResponse.status).toBe(200);
+    expect(hrResponse.body.items).toHaveLength(2);
   });
 
   test("returns 403 for employees on pending-review", async () => {
@@ -231,5 +232,290 @@ describe("Recognition API", () => {
     const response = await request(app).get("/api/recognitions");
 
     expect(response.status).toBe(401);
+  });
+
+  test("manager approval creates a ledger entry, updates budget, and credits receiver balance", async () => {
+    const managerToken = await loginAs(
+      "manager@recognitionhub.local",
+      "Manager@123",
+      "10.0.1.7",
+    );
+    const [elliot, casey, manager] = await Promise.all([
+      prisma.user.findUnique({ where: { email: "elliot@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "casey@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "manager@recognitionhub.local" } }),
+    ]);
+
+    const recognition = await prisma.recognition.create({
+      data: {
+        sender_id: casey.id,
+        receiver_id: elliot.id,
+        message: "Great collaboration on the sprint closeout.",
+        status: "pending",
+        visibility: "public",
+      },
+    });
+
+    const response = await request(app)
+      .patch(`/api/recognitions/${recognition.id}/approve`)
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({
+        pointsAwarded: 120,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe("approved");
+    expect(response.body.points_awarded).toBe(120);
+    expect(response.body.approver.email).toBe("manager@recognitionhub.local");
+
+    const [updatedReceiver, pointsTransaction, budget] = await Promise.all([
+      prisma.user.findUnique({
+        where: {
+          id: elliot.id,
+        },
+      }),
+      prisma.pointTransaction.findFirst({
+        where: {
+          source_id: recognition.id,
+        },
+      }),
+      prisma.pointBudget.findFirst({
+        where: {
+          manager_id: manager.id,
+        },
+      }),
+    ]);
+
+    expect(updatedReceiver.points_balance).toBe(120);
+    expect(pointsTransaction).toMatchObject({
+      user_id: elliot.id,
+      type: "credit",
+      source_type: "recognition_approved",
+      points: 120,
+      balance_after: 120,
+      created_by: manager.id,
+    });
+    expect(budget.used_points).toBe(120);
+  });
+
+  test("hr approval credits balance without consuming manager budget", async () => {
+    const hrToken = await loginAs(
+      "hr@recognitionhub.local",
+      "Hr@12345",
+      "10.0.1.8",
+    );
+    const [hr, elliot, sam, manager] = await Promise.all([
+      prisma.user.findUnique({ where: { email: "hr@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "elliot@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "sam@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "manager@recognitionhub.local" } }),
+    ]);
+
+    const recognition = await prisma.recognition.create({
+      data: {
+        sender_id: elliot.id,
+        receiver_id: sam.id,
+        message: "Cross-team support on customer rollout.",
+        status: "pending",
+        visibility: "public",
+      },
+    });
+
+    const response = await request(app)
+      .patch(`/api/recognitions/${recognition.id}/approve`)
+      .set("Authorization", `Bearer ${hrToken}`)
+      .send({
+        pointsAwarded: 90,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe("approved");
+    expect(response.body.approver.email).toBe("hr@recognitionhub.local");
+
+    const [updatedReceiver, pointsTransaction, budget] = await Promise.all([
+      prisma.user.findUnique({
+        where: {
+          id: sam.id,
+        },
+      }),
+      prisma.pointTransaction.findFirst({
+        where: {
+          source_id: recognition.id,
+        },
+      }),
+      prisma.pointBudget.findFirst({
+        where: {
+          manager_id: manager.id,
+        },
+      }),
+    ]);
+
+    expect(updatedReceiver.points_balance).toBe(90);
+    expect(pointsTransaction.created_by).toBe(hr.id);
+    expect(budget.used_points).toBe(0);
+  });
+
+  test("manager approval rejects points that exceed monthly budget", async () => {
+    const managerToken = await loginAs(
+      "manager@recognitionhub.local",
+      "Manager@123",
+      "10.0.1.9",
+    );
+    const [elliot, casey, manager] = await Promise.all([
+      prisma.user.findUnique({ where: { email: "elliot@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "casey@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "manager@recognitionhub.local" } }),
+    ]);
+
+    await prisma.pointBudget.updateMany({
+      where: {
+        manager_id: manager.id,
+      },
+      data: {
+        used_points: 1950,
+      },
+    });
+
+    const recognition = await prisma.recognition.create({
+      data: {
+        sender_id: casey.id,
+        receiver_id: elliot.id,
+        message: "Budget should block this approval.",
+        status: "pending",
+        visibility: "public",
+      },
+    });
+
+    const response = await request(app)
+      .patch(`/api/recognitions/${recognition.id}/approve`)
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({
+        pointsAwarded: 100,
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("points awarded exceeds monthly budget");
+  });
+
+  test("manager reject updates recognition without touching the ledger", async () => {
+    const managerToken = await loginAs(
+      "manager@recognitionhub.local",
+      "Manager@123",
+      "10.0.1.10",
+    );
+    const [elliot, casey] = await Promise.all([
+      prisma.user.findUnique({ where: { email: "elliot@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "casey@recognitionhub.local" } }),
+    ]);
+
+    const recognition = await prisma.recognition.create({
+      data: {
+        sender_id: casey.id,
+        receiver_id: elliot.id,
+        message: "This recognition should be rejected.",
+        status: "pending",
+        visibility: "public",
+      },
+    });
+
+    const response = await request(app)
+      .patch(`/api/recognitions/${recognition.id}/reject`)
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({
+        rejectionReason: "Needs more context before approval.",
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe("rejected");
+    expect(response.body.rejection_reason).toBe(
+      "Needs more context before approval.",
+    );
+
+    const [updatedReceiver, pointsTransaction] = await Promise.all([
+      prisma.user.findUnique({
+        where: {
+          id: elliot.id,
+        },
+      }),
+      prisma.pointTransaction.findFirst({
+        where: {
+          source_id: recognition.id,
+        },
+      }),
+    ]);
+
+    expect(updatedReceiver.points_balance).toBe(0);
+    expect(pointsTransaction).toBeNull();
+  });
+
+  test("approval transaction rolls back completely if budget update fails", async () => {
+    const managerToken = await loginAs(
+      "manager@recognitionhub.local",
+      "Manager@123",
+      "10.0.1.11",
+    );
+    const [elliot, casey, manager] = await Promise.all([
+      prisma.user.findUnique({ where: { email: "elliot@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "casey@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "manager@recognitionhub.local" } }),
+    ]);
+
+    const recognition = await prisma.recognition.create({
+      data: {
+        sender_id: casey.id,
+        receiver_id: elliot.id,
+        message: "Rollback test recognition.",
+        status: "pending",
+        visibility: "public",
+      },
+    });
+
+    const budgetFailureSpy = jest
+      .spyOn(
+        recognitionService.recognitionWriteHelpers,
+        "incrementManagerBudgetUsage",
+      )
+      .mockRejectedValueOnce(new Error("Simulated budget update failure"));
+
+    const response = await request(app)
+      .patch(`/api/recognitions/${recognition.id}/approve`)
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({
+        pointsAwarded: 80,
+      });
+
+    budgetFailureSpy.mockRestore();
+
+    expect(response.status).toBe(500);
+
+    const [persistedRecognition, pointsTransaction, updatedReceiver, budget] = await Promise.all([
+      prisma.recognition.findUnique({
+        where: {
+          id: recognition.id,
+        },
+      }),
+      prisma.pointTransaction.findFirst({
+        where: {
+          source_id: recognition.id,
+        },
+      }),
+      prisma.user.findUnique({
+        where: {
+          id: elliot.id,
+        },
+      }),
+      prisma.pointBudget.findFirst({
+        where: {
+          manager_id: manager.id,
+        },
+      }),
+    ]);
+
+    expect(persistedRecognition.status).toBe("pending");
+    expect(persistedRecognition.points_awarded).toBeNull();
+    expect(persistedRecognition.approver_id).toBeNull();
+    expect(pointsTransaction).toBeNull();
+    expect(updatedReceiver.points_balance).toBe(0);
+    expect(budget.used_points).toBe(0);
   });
 });

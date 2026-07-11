@@ -20,22 +20,22 @@ describe("Authentication API", () => {
 
   test("logs in successfully with valid credentials", async () => {
     const response = await request(app).post("/api/auth/login").send({
-      email: "admin@recognitionhub.local",
-      password: "Admin@123",
+      email: "hr@recognitionhub.local",
+      password: "Hr@12345",
     }).set("X-Forwarded-For", "10.0.0.1");
 
     expect(response.status).toBe(200);
     expect(response.body.accessToken).toBeTruthy();
     expect(response.body.refreshToken).toBeTruthy();
     expect(response.body.user).toMatchObject({
-      email: "admin@recognitionhub.local",
-      roleName: "Admin",
+      email: "hr@recognitionhub.local",
+      roleName: "HR",
     });
   });
 
   test("returns 401 for wrong password", async () => {
     const response = await request(app).post("/api/auth/login").send({
-      email: "admin@recognitionhub.local",
+      email: "hr@recognitionhub.local",
       password: "wrong-password",
     }).set("X-Forwarded-For", "10.0.0.2");
 
@@ -48,7 +48,7 @@ describe("Authentication API", () => {
   test("triggers rate limiting after repeated login failures", async () => {
     for (let attempt = 0; attempt < 10; attempt += 1) {
       const response = await request(app).post("/api/auth/login").send({
-        email: "admin@recognitionhub.local",
+        email: "hr@recognitionhub.local",
         password: "wrong-password",
       }).set("X-Forwarded-For", "10.0.0.3");
 
@@ -56,7 +56,7 @@ describe("Authentication API", () => {
     }
 
     const rateLimitedResponse = await request(app).post("/api/auth/login").send({
-      email: "admin@recognitionhub.local",
+      email: "hr@recognitionhub.local",
       password: "wrong-password",
     }).set("X-Forwarded-For", "10.0.0.3");
 

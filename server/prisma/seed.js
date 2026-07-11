@@ -5,12 +5,12 @@ const prisma = new PrismaClient();
 
 const seedUsers = [
   {
-    key: "admin",
+    key: "hr",
     employee_code: "ADM001",
-    name: "Avery Admin",
-    email: "admin@recognitionhub.local",
-    password: "Admin@123",
-    role: "Admin",
+    name: "Harper HR",
+    email: "hr@recognitionhub.local",
+    password: "Hr@12345",
+    role: "HR",
     department: null,
     manager: null,
   },
@@ -85,13 +85,23 @@ const seedRecognitionCategories = [
 ];
 
 async function seedDatabase() {
+  const now = new Date();
+  const currentMonthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+  );
+  const currentMonthEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0),
+  );
+
+  await prisma.pointTransaction.deleteMany();
+  await prisma.pointBudget.deleteMany();
   await prisma.recognition.deleteMany();
   await prisma.recognitionCategory.deleteMany();
   await prisma.user.deleteMany();
   await prisma.department.deleteMany();
   await prisma.role.deleteMany();
 
-  const [employeeRole, managerRole, adminRole] = await Promise.all([
+  const [employeeRole, managerRole, hrRole] = await Promise.all([
     prisma.role.create({
       data: {
         name: "Employee",
@@ -106,7 +116,7 @@ async function seedDatabase() {
     }),
     prisma.role.create({
       data: {
-        name: "Admin",
+        name: "HR",
         permissions: { canApproveRedemptions: true },
       },
     }),
@@ -130,7 +140,7 @@ async function seedDatabase() {
   const roleMap = new Map([
     ["Employee", employeeRole.id],
     ["Manager", managerRole.id],
-    ["Admin", adminRole.id],
+    ["HR", hrRole.id],
   ]);
 
   const departmentMap = new Map([
@@ -161,6 +171,16 @@ async function seedDatabase() {
 
     createdUsers.set(seedUser.key, createdUser);
   }
+
+  await prisma.pointBudget.create({
+    data: {
+      manager_id: createdUsers.get("manager").id,
+      allocated_points: 2000,
+      used_points: 0,
+      period_start: currentMonthStart,
+      period_end: currentMonthEnd,
+    },
+  });
 
   await Promise.all(
     seedRecognitionCategories.map((category) =>

@@ -61,7 +61,7 @@ function LoginPage() {
               type="email"
               value={formValues.email}
               onChange={handleChange}
-              placeholder="admin@recognitionhub.local"
+              placeholder="hr@recognitionhub.local"
               required
             />
           </label>

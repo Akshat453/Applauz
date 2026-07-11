@@ -46,6 +46,9 @@ model User {
   recognitions_sent     Recognition[] @relation("RecognitionSender")
   recognitions_received Recognition[] @relation("RecognitionReceiver")
   recognitions_approved Recognition[] @relation("RecognitionApprover")
+  points_transactions   PointTransaction[] @relation("UserPointTransactions")
+  created_transactions  PointTransaction[] @relation("PointTransactionCreator")
+  managed_points_budgets PointBudget[] @relation("ManagerPointsBudgets")
 
   @@map("users")
 }
@@ -80,4 +83,32 @@ model Recognition {
   approver           User?                @relation("RecognitionApprover", fields: [approver_id], references: [id])
 
   @@map("recognitions")
+}
+
+model PointTransaction {
+  id            String   @id @default(uuid()) @db.Uuid
+  user_id       String   @db.Uuid
+  type          String   @db.VarChar(50)
+  source_type   String   @db.VarChar(50)
+  source_id     String?  @db.Uuid
+  points        Int
+  balance_after Int
+  created_by    String?  @db.Uuid
+  created_at    DateTime @default(now())
+  user          User     @relation("UserPointTransactions", fields: [user_id], references: [id])
+  creator       User?    @relation("PointTransactionCreator", fields: [created_by], references: [id])
+
+  @@map("points_transactions")
+}
+
+model PointBudget {
+  id               String   @id @default(uuid()) @db.Uuid
+  manager_id       String   @db.Uuid
+  allocated_points Int
+  used_points      Int      @default(0)
+  period_start     DateTime @db.Date
+  period_end       DateTime @db.Date
+  manager          User     @relation("ManagerPointsBudgets", fields: [manager_id], references: [id])
+
+  @@map("points_budget")
 }

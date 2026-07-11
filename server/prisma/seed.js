@@ -56,7 +56,37 @@ const seedUsers = [
   },
 ];
 
+const seedRecognitionCategories = [
+  {
+    name: "Teamwork",
+    icon: "users",
+    default_points: 50,
+  },
+  {
+    name: "Innovation",
+    icon: "lightbulb",
+    default_points: 100,
+  },
+  {
+    name: "Leadership",
+    icon: "badge",
+    default_points: 150,
+  },
+  {
+    name: "Customer Focus",
+    icon: "heart-handshake",
+    default_points: 75,
+  },
+  {
+    name: "Ownership",
+    icon: "target",
+    default_points: 125,
+  },
+];
+
 async function seedDatabase() {
+  await prisma.recognition.deleteMany();
+  await prisma.recognitionCategory.deleteMany();
   await prisma.user.deleteMany();
   await prisma.department.deleteMany();
   await prisma.role.deleteMany();
@@ -132,6 +162,14 @@ async function seedDatabase() {
     createdUsers.set(seedUser.key, createdUser);
   }
 
+  await Promise.all(
+    seedRecognitionCategories.map((category) =>
+      prisma.recognitionCategory.create({
+        data: category,
+      }),
+    ),
+  );
+
   console.log("Seed completed successfully.");
   console.log("Plaintext login passwords for local testing:");
 
@@ -159,5 +197,6 @@ if (require.main === module) {
 
 module.exports = {
   seedDatabase,
+  seedRecognitionCategories,
   seedUsers,
 };

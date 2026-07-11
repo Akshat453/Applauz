@@ -11,6 +11,7 @@ const {
   refreshAccessToken,
 } = require("./services/auth.service");
 const verifyToken = require("./middleware/auth.middleware");
+const recognitionRoutes = require("./routes/recognition.routes");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -121,6 +122,8 @@ app.get("/api/users/me", verifyToken, async (request, response) => {
     updatedAt: user.updated_at,
   });
 });
+
+app.use("/api/recognitions", recognitionRoutes);
 
 module.exports = {
   app,

@@ -26,23 +26,58 @@ model Department {
 }
 
 model User {
-  id             String      @id @default(uuid()) @db.Uuid
-  employee_code  String      @unique @db.VarChar(50)
-  name           String      @db.VarChar(120)
-  email          String      @unique @db.VarChar(255)
-  password_hash  String
-  role_id        String      @db.Uuid
-  department_id  String?     @db.Uuid
-  manager_id     String?     @db.Uuid
-  points_balance Int         @default(0)
-  avatar_url     String?     @db.VarChar(255)
-  status         String      @default("active") @db.VarChar(50)
-  created_at     DateTime    @default(now())
-  updated_at     DateTime    @default(now()) @updatedAt
-  role           Role        @relation(fields: [role_id], references: [id])
-  department     Department? @relation(fields: [department_id], references: [id])
-  manager        User?       @relation("ManagerReports", fields: [manager_id], references: [id])
-  direct_reports User[]      @relation("ManagerReports")
+  id                    String        @id @default(uuid()) @db.Uuid
+  employee_code         String        @unique @db.VarChar(50)
+  name                  String        @db.VarChar(120)
+  email                 String        @unique @db.VarChar(255)
+  password_hash         String
+  role_id               String        @db.Uuid
+  department_id         String?       @db.Uuid
+  manager_id            String?       @db.Uuid
+  points_balance        Int           @default(0)
+  avatar_url            String?       @db.VarChar(255)
+  status                String        @default("active") @db.VarChar(50)
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @default(now()) @updatedAt
+  role                  Role          @relation(fields: [role_id], references: [id])
+  department            Department?   @relation(fields: [department_id], references: [id])
+  manager               User?         @relation("ManagerReports", fields: [manager_id], references: [id])
+  direct_reports        User[]        @relation("ManagerReports")
+  recognitions_sent     Recognition[] @relation("RecognitionSender")
+  recognitions_received Recognition[] @relation("RecognitionReceiver")
+  recognitions_approved Recognition[] @relation("RecognitionApprover")
 
   @@map("users")
+}
+
+model RecognitionCategory {
+  id             String        @id @default(uuid()) @db.Uuid
+  name           String        @unique @db.VarChar(50)
+  icon           String?       @db.VarChar(255)
+  default_points Int
+  recognitions   Recognition[]
+
+  @@map("recognition_categories")
+}
+
+model Recognition {
+  id                 String               @id @default(uuid()) @db.Uuid
+  sender_id          String               @db.Uuid
+  receiver_id        String               @db.Uuid
+  category_id        String?              @db.Uuid
+  message            String               @db.Text
+  points_recommended Int?
+  points_awarded     Int?
+  status             String               @default("pending") @db.VarChar(50)
+  approver_id        String?              @db.Uuid
+  rejection_reason   String?              @db.Text
+  reviewed_at        DateTime?
+  visibility         String               @default("public") @db.VarChar(50)
+  created_at         DateTime             @default(now())
+  sender             User                 @relation("RecognitionSender", fields: [sender_id], references: [id])
+  receiver           User                 @relation("RecognitionReceiver", fields: [receiver_id], references: [id])
+  category           RecognitionCategory? @relation(fields: [category_id], references: [id])
+  approver           User?                @relation("RecognitionApprover", fields: [approver_id], references: [id])
+
+  @@map("recognitions")
 }

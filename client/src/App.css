@@ -1,0 +1,66 @@
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.status-card {
+  width: min(100%, 720px);
+  padding: 3rem;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.description {
+  margin: 0 0 2rem;
+  max-width: 56ch;
+  color: #475569;
+}
+
+.status-panel {
+  padding: 1.25rem 1.5rem;
+  border-radius: 18px;
+  border: 1px solid transparent;
+}
+
+.status-panel--loading {
+  background: #fff7ed;
+  border-color: #fdba74;
+}
+
+.status-panel--success {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+
+.status-panel--error {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.status-label {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #334155;
+}
+
+.status-panel p {
+  margin: 0;
+}

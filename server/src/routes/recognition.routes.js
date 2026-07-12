@@ -6,6 +6,7 @@ const requireRole = require("../middleware/requireRole.middleware");
 const {
   approveRecognition,
   createRecognition,
+  listRecognitionCategories,
   listRecognitions,
   listPendingRecognitionsForReviewer,
   rejectRecognition,
@@ -17,8 +18,7 @@ const createRecognitionSchema = z.object({
   receiverId: z.uuid(),
   categoryId: z.uuid().nullable().optional(),
   message: z.string().trim().min(1),
-  pointsRecommended: z.number().int().min(0).nullable().optional(),
-});
+}).strict();
 
 const listRecognitionsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -78,7 +78,6 @@ router.post("/", verifyToken, async (request, response) => {
       receiverId: parsedBody.data.receiverId,
       categoryId: parsedBody.data.categoryId,
       message: parsedBody.data.message,
-      pointsRecommended: parsedBody.data.pointsRecommended,
     });
 
     return response.status(201).json(recognition);
@@ -110,19 +109,25 @@ router.get("/", verifyToken, async (request, response) => {
   return response.status(200).json(result);
 });
 
+router.get("/categories", verifyToken, async (_request, response) => {
+  const categories = await listRecognitionCategories();
+
+  return response.status(200).json({
+    items: categories,
+  });
+});
+
 router.get(
   "/pending-review",
   verifyToken,
   requireRole(["Manager", "HR"]),
   async (request, response) => {
-    const items = await listPendingRecognitionsForReviewer({
+    const result = await listPendingRecognitionsForReviewer({
       userId: request.user.userId,
       roleName: request.user.roleName,
     });
 
-    return response.status(200).json({
-      items,
-    });
+    return response.status(200).json(result);
   },
 );
 

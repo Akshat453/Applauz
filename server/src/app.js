@@ -123,6 +123,31 @@ app.get("/api/users/me", verifyToken, async (request, response) => {
   });
 });
 
+app.get("/api/users", verifyToken, async (request, response) => {
+  const users = await prisma.user.findMany({
+    where: {
+      id: {
+        not: request.user.userId,
+      },
+      status: "active",
+    },
+    orderBy: {
+      name: "asc",
+    },
+    include: {
+      department: true,
+    },
+  });
+
+  return response.status(200).json({
+    items: users.map((user) => ({
+      id: user.id,
+      name: user.name,
+      departmentName: user.department ? user.department.name : null,
+    })),
+  });
+});
+
 app.use("/api/recognitions", recognitionRoutes);
 
 module.exports = {

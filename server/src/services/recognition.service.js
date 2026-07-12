@@ -57,6 +57,14 @@ function createServiceError(message, statusCode) {
   return error;
 }
 
+async function listRecognitionCategories() {
+  return prisma.recognitionCategory.findMany({
+    orderBy: {
+      name: "asc",
+    },
+  });
+}
+
 async function getRecognitionForReview({ tx, recognitionId }) {
   const recognition = await tx.recognition.findUnique({
     where: {
@@ -94,7 +102,6 @@ async function createRecognition({
   receiverId,
   categoryId,
   message,
-  pointsRecommended,
 }) {
   if (senderId === receiverId) {
     throw createServiceError("SELF_RECOGNITION_NOT_ALLOWED", 400);
@@ -128,7 +135,7 @@ async function createRecognition({
       receiver_id: receiverId,
       category_id: categoryId ?? null,
       message,
-      points_recommended: pointsRecommended ?? null,
+      points_recommended: null,
       status: "pending",
       visibility: "public",
     },
@@ -187,7 +194,7 @@ async function listPendingRecognitionsForReviewer({ userId, roleName }) {
         }),
   };
 
-  return prisma.recognition.findMany({
+  const items = await prisma.recognition.findMany({
     where,
     orderBy: [
       {
@@ -199,6 +206,42 @@ async function listPendingRecognitionsForReviewer({ userId, roleName }) {
     ],
     include: buildRecognitionInclude(),
   });
+
+  if (roleName === "HR") {
+    return {
+      items,
+      budget: null,
+    };
+  }
+
+  const budget = await prisma.pointBudget.findFirst({
+    where: {
+      manager_id: userId,
+      period_start: {
+        lte: new Date(),
+      },
+      period_end: {
+        gte: new Date(),
+      },
+    },
+    orderBy: {
+      period_start: "desc",
+    },
+  });
+
+  return {
+    items,
+    budget: budget
+      ? {
+          id: budget.id,
+          allocatedPoints: budget.allocated_points,
+          usedPoints: budget.used_points,
+          remainingPoints: budget.allocated_points - budget.used_points,
+          periodStart: budget.period_start,
+          periodEnd: budget.period_end,
+        }
+      : null,
+  };
 }
 
 async function approveRecognition({
@@ -347,6 +390,7 @@ async function rejectRecognition({
 module.exports = {
   approveRecognition,
   createRecognition,
+  listRecognitionCategories,
   listPendingRecognitionsForReviewer,
   listRecognitions,
   recognitionWriteHelpers,

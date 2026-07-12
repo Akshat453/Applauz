@@ -51,14 +51,13 @@ describe("Recognition API", () => {
         receiverId: receiver.id,
         categoryId: category.id,
         message: "Thanks for pairing on the API work.",
-        pointsRecommended: 75,
       });
 
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({
       status: "pending",
       message: "Thanks for pairing on the API work.",
-      points_recommended: 75,
+      points_recommended: null,
       visibility: "public",
       sender: {
         email: "elliot@recognitionhub.local",
@@ -70,6 +69,31 @@ describe("Recognition API", () => {
         name: "Teamwork",
       },
     });
+  });
+
+  test("rejects employee-suggested points on recognition creation", async () => {
+    const accessToken = await loginAs(
+      "elliot@recognitionhub.local",
+      "Employee1@123",
+      "10.0.1.1a",
+    );
+    const receiver = await prisma.user.findUnique({
+      where: {
+        email: "casey@recognitionhub.local",
+      },
+    });
+
+    const response = await request(app)
+      .post("/api/recognitions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        receiverId: receiver.id,
+        message: "Trying to suggest points should fail now.",
+        pointsRecommended: 75,
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Invalid request body");
   });
 
   test("rejects self-recognition with a 400", async () => {
@@ -201,6 +225,11 @@ describe("Recognition API", () => {
 
     expect(managerResponse.status).toBe(200);
     expect(managerResponse.body.items).toHaveLength(1);
+    expect(managerResponse.body.budget).toMatchObject({
+      allocatedPoints: 2000,
+      usedPoints: 0,
+      remainingPoints: 2000,
+    });
     expect(managerResponse.body.items[0].message).toBe(
       "Pending for engineering report",
     );
@@ -212,6 +241,7 @@ describe("Recognition API", () => {
 
     expect(hrResponse.status).toBe(200);
     expect(hrResponse.body.items).toHaveLength(2);
+    expect(hrResponse.body.budget).toBeNull();
   });
 
   test("returns 403 for employees on pending-review", async () => {
@@ -232,6 +262,57 @@ describe("Recognition API", () => {
     const response = await request(app).get("/api/recognitions");
 
     expect(response.status).toBe(401);
+  });
+
+  test("returns recognition categories for authenticated users", async () => {
+    const accessToken = await loginAs(
+      "elliot@recognitionhub.local",
+      "Employee1@123",
+      "10.0.1.6a",
+    );
+
+    const response = await request(app)
+      .get("/api/recognitions/categories")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.items).toHaveLength(5);
+    expect(response.body.items.map((item) => item.name)).toEqual([
+      "Customer Focus",
+      "Innovation",
+      "Leadership",
+      "Ownership",
+      "Teamwork",
+    ]);
+  });
+
+  test("returns authenticated colleague list without the current user", async () => {
+    const accessToken = await loginAs(
+      "elliot@recognitionhub.local",
+      "Employee1@123",
+      "10.0.1.6b",
+    );
+
+    const response = await request(app)
+      .get("/api/users")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.items.some((item) => item.name === "Elliot Engineer")).toBe(
+      false,
+    );
+    expect(response.body.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Casey Coder",
+          departmentName: "Engineering",
+        }),
+        expect.objectContaining({
+          name: "Morgan Manager",
+          departmentName: "Engineering",
+        }),
+      ]),
+    );
   });
 
   test("manager approval creates a ledger entry, updates budget, and credits receiver balance", async () => {

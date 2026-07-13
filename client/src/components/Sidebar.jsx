@@ -16,8 +16,8 @@ const managementNav = [
 ];
 
 const adminNav = [
-  { to: '/admin/catalog', label: 'Admin Catalog', icon: LayoutGrid, roles: ['HR'] },
-  { to: '/admin/redemptions', label: 'Admin Redemptions', icon: Sparkles, roles: ['HR'] },
+  { to: '/admin/catalog', label: 'HR Catalog', icon: LayoutGrid, roles: ['HR'] },
+  { to: '/admin/redemptions', label: 'HR Redemptions', icon: Sparkles, roles: ['HR'] },
   { to: '/admin/analytics', label: 'Analytics', icon: BarChart3, roles: ['HR'] },
 ];
 
@@ -55,21 +55,19 @@ function Sidebar({ open, onClose }) {
 
   const sidebar = (
     <div className="flex h-full flex-col bg-primary px-4 py-6">
-      {/* Brand */}
       <div className="px-3">
         <p className="text-2xl font-bold text-white">RewardsPro</p>
         <p className="mt-1 text-xs uppercase tracking-[0.18em] text-white/50">Enterprise Recognition</p>
       </div>
 
-      {/* Main nav */}
       <nav className="mt-8 flex flex-1 flex-col gap-1" aria-label="Primary">
         {mainNav.map((item) => <NavItem key={item.to} item={item} />)}
         {filteredManagement.map((item) => <NavItem key={item.to} item={item} />)}
 
         {showAdminSection ? (
           <>
-            <p className="mt-6 mb-2 px-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/35">
-              Admin Controls
+            <p className="mb-2 mt-6 px-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/35">
+              HR Controls
             </p>
             {filteredAdmin.map((item) => <NavItem key={item.to} item={item} />)}
           </>
@@ -78,7 +76,6 @@ function Sidebar({ open, onClose }) {
         {bottomNav.map((item) => <NavItem key={item.to} item={item} />)}
       </nav>
 
-      {/* CTA + footer */}
       <div className="space-y-2 pt-4">
         <button
           type="button"
@@ -109,10 +106,8 @@ function Sidebar({ open, onClose }) {
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside className="hidden w-[220px] shrink-0 lg:block">{sidebar}</aside>
 
-      {/* Mobile overlay */}
       {open ? (
         <div className="fixed inset-0 z-50 flex lg:hidden">
           <div className="absolute inset-0 bg-ink/40" onClick={onClose} aria-hidden="true" />

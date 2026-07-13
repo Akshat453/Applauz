@@ -1,76 +1,150 @@
-import { Clock, Package } from 'lucide-react';
+import { Clock3, Gift, History } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import axiosClient from '../api/axiosClient';
 import AppLayout from '../components/AppLayout';
 import Badge from '../components/Badge';
 import Card from '../components/Card';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
+import { formatDate, formatPoints } from '../utils/formatters';
 
-const mockRedemptions = [
-  { id: 1, reward: 'Amazon Gift Card ($50)', points: 5000, date: 'Nov 2, 2023', status: 'Delivered', emoji: '🛒' },
-  { id: 2, reward: 'Company Hoodie', points: 1200, date: 'Oct 18, 2023', status: 'Shipped', emoji: '👕' },
-  { id: 3, reward: 'Morning Brew $25 Card', points: 2500, date: 'Oct 5, 2023', status: 'Delivered', emoji: '☕' },
-  { id: 4, reward: 'Spa & Wellness Day', points: 15000, date: 'Sep 22, 2023', status: 'Processing', emoji: '🧖' },
-  { id: 5, reward: 'Executive Leather Journal', points: 1200, date: 'Sep 10, 2023', status: 'Delivered', emoji: '📓' },
-];
-
-const statusTone = { Delivered: 'success', Shipped: 'default', Processing: 'warning' };
+const STATUS_TONES = {
+  pending: 'warning',
+  approved: 'success',
+  rejected: 'danger',
+};
 
 function MyRedemptions() {
+  const [items, setItems] = useState([]);
+  const [loadingState, setLoadingState] = useState('loading');
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadRedemptions = async () => {
+      try {
+        const response = await axiosClient.get('/redemptions');
+        if (!mounted) return;
+        setItems(response.data.items);
+        setLoadingState('success');
+      } catch {
+        if (!mounted) return;
+        setLoadingState('error');
+      }
+    };
+
+    loadRedemptions();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const summary = useMemo(() => {
+    return {
+      total: items.length,
+      pending: items.filter((item) => item.status === 'pending').length,
+      pointsSpent: items.reduce((total, item) => total + item.points_spent, 0),
+    };
+  }, [items]);
+
   return (
-    <AppLayout title="My Redemptions" description="Track the status of your redeemed rewards.">
-      {/* Summary cards */}
+    <AppLayout
+      title="My Redemptions"
+      description="Track your reward redemption requests and their current status."
+      searchPlaceholder="Search your redemptions..."
+    >
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-sm bg-primary/10 text-primary"><Package className="h-4 w-4" /></div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-primary/10 text-primary">
+            <History className="h-5 w-5" />
+          </div>
           <div>
-            <p className="text-xs text-ink/45">Total Redeemed</p>
-            <p className="font-monoPoints text-lg font-semibold text-ink">5</p>
+            <p className="text-xs text-ink/45">Total Requests</p>
+            <p className="font-monoPoints text-2xl font-semibold text-ink">{summary.total}</p>
           </div>
         </Card>
         <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-sm bg-accent/12 text-accent"><Clock className="h-4 w-4" /></div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-accent/12 text-accent">
+            <Clock3 className="h-5 w-5" />
+          </div>
           <div>
-            <p className="text-xs text-ink/45">In Progress</p>
-            <p className="font-monoPoints text-lg font-semibold text-ink">2</p>
+            <p className="text-xs text-ink/45">Pending Approval</p>
+            <p className="font-monoPoints text-2xl font-semibold text-ink">{summary.pending}</p>
           </div>
         </Card>
         <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-sm bg-success/10 text-success"><Package className="h-4 w-4" /></div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-success/10 text-success">
+            <Gift className="h-5 w-5" />
+          </div>
           <div>
-            <p className="text-xs text-ink/45">Points Spent</p>
-            <p className="font-monoPoints text-lg font-semibold text-ink">24,900</p>
+            <p className="text-xs text-ink/45">Points Requested</p>
+            <p className="font-monoPoints text-2xl font-semibold text-ink">{formatPoints(summary.pointsSpent)}</p>
           </div>
         </Card>
       </div>
 
-      {/* Redemptions list */}
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left">
-            <thead className="bg-surface text-[11px] uppercase tracking-[0.12em] text-ink/50">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Reward</th>
-                <th className="px-4 py-3 font-semibold">Points</th>
-                <th className="px-4 py-3 font-semibold">Date</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mockRedemptions.map((r) => (
-                <tr key={r.id} className="border-t border-line/50 text-sm">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{r.emoji}</span>
-                      <span className="font-medium text-ink">{r.reward}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 font-monoPoints text-sm font-semibold text-accent">{r.points.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-ink/55">{r.date}</td>
-                  <td className="px-4 py-3"><Badge tone={statusTone[r.status]}>{r.status}</Badge></td>
+      {loadingState === 'loading' ? (
+        <LoadingSkeleton className="h-[420px] w-full" />
+      ) : null}
+
+      {loadingState === 'error' ? (
+        <EmptyState
+          title="We couldn't load your redemptions"
+          description="Your redemption history is temporarily unavailable. Please refresh and try again."
+          actionLabel="Reload history"
+          onAction={() => window.location.reload()}
+        />
+      ) : null}
+
+      {loadingState === 'success' && items.length === 0 ? (
+        <EmptyState
+          title="No redemptions yet"
+          description="Browse the rewards catalog and submit your first redemption request."
+          actionLabel="Open rewards catalog"
+          onAction={() => window.location.assign('/rewards')}
+        />
+      ) : null}
+
+      {loadingState === 'success' && items.length > 0 ? (
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left">
+              <thead className="bg-surface text-[11px] uppercase tracking-[0.12em] text-ink/50">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Reward</th>
+                  <th className="px-4 py-3 font-semibold">Points</th>
+                  <th className="px-4 py-3 font-semibold">Requested</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} className="border-t border-line/50 text-sm">
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="font-semibold text-ink">{item.reward.title}</p>
+                        <p className="mt-1 text-xs text-ink/50">{item.reward.category.replaceAll('_', ' ')}</p>
+                        {item.rejection_reason ? (
+                          <p className="mt-2 text-xs text-danger">Reason: {item.rejection_reason}</p>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-monoPoints text-sm font-semibold text-accent">
+                      {formatPoints(item.points_spent)}
+                    </td>
+                    <td className="px-4 py-3 text-ink/60">{formatDate(item.requested_at)}</td>
+                    <td className="px-4 py-3">
+                      <Badge tone={STATUS_TONES[item.status] || 'default'}>
+                        {item.status}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : null}
     </AppLayout>
   );
 }

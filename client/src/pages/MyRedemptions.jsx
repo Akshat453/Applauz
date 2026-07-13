@@ -51,33 +51,34 @@ function MyRedemptions() {
     <AppLayout
       title="My Redemptions"
       description="Track your reward redemption requests and their current status."
+      eyebrow="Rewards activity"
       searchPlaceholder="Search your redemptions..."
     >
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-primary/10 text-primary">
+        <Card className="flex items-center gap-4 p-5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-sm bg-primary/10 text-primary">
             <History className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs text-ink/45">Total Requests</p>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-ink/45">Total Requests</p>
             <p className="font-monoPoints text-2xl font-semibold text-ink">{summary.total}</p>
           </div>
         </Card>
-        <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-accent/12 text-accent">
+        <Card className="flex items-center gap-4 p-5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-sm bg-accent/12 text-accent">
             <Clock3 className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs text-ink/45">Pending Approval</p>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-ink/45">Pending Approval</p>
             <p className="font-monoPoints text-2xl font-semibold text-ink">{summary.pending}</p>
           </div>
         </Card>
-        <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-success/10 text-success">
+        <Card className="flex items-center gap-4 p-5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-sm bg-success/10 text-success">
             <Gift className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs text-ink/45">Points Requested</p>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-ink/45">Points Requested</p>
             <p className="font-monoPoints text-2xl font-semibold text-ink">{formatPoints(summary.pointsSpent)}</p>
           </div>
         </Card>
@@ -109,18 +110,18 @@ function MyRedemptions() {
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left">
-              <thead className="bg-surface text-[11px] uppercase tracking-[0.12em] text-ink/50">
+              <thead className="bg-surfaceAlt text-[11px] uppercase tracking-[0.12em] text-ink/50">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Reward</th>
-                  <th className="px-4 py-3 font-semibold">Points</th>
-                  <th className="px-4 py-3 font-semibold">Requested</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-4 font-semibold">Reward</th>
+                  <th className="px-5 py-4 font-semibold">Points</th>
+                  <th className="px-5 py-4 font-semibold">Requested</th>
+                  <th className="px-5 py-4 font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id} className="border-t border-line/50 text-sm">
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">
                       <div>
                         <p className="font-semibold text-ink">{item.reward.title}</p>
                         <p className="mt-1 text-xs text-ink/50">{item.reward.category.replaceAll('_', ' ')}</p>
@@ -129,11 +130,11 @@ function MyRedemptions() {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-monoPoints text-sm font-semibold text-accent">
+                    <td className="px-5 py-4 font-monoPoints text-sm font-semibold text-accent">
                       {formatPoints(item.points_spent)}
                     </td>
-                    <td className="px-4 py-3 text-ink/60">{formatDate(item.requested_at)}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4 text-ink/60">{formatDate(item.requested_at)}</td>
+                    <td className="px-5 py-4">
                       <Badge tone={STATUS_TONES[item.status] || 'default'}>
                         {item.status}
                       </Badge>

@@ -189,8 +189,19 @@ describe("Redemptions API", () => {
     const updatedReward = await prisma.rewardCatalog.findUnique({
       where: { id: reward.id },
     });
+    const notification = await prisma.notification.findFirst({
+      where: {
+        related_entity_id: redemptionResponse.body.id,
+        type: "redemption_approved",
+      },
+    });
 
     expect(updatedReward.stock_quantity).toBe(initialStock - 1);
+    expect(notification).toMatchObject({
+      user_id: approveResponse.body.user_id,
+      title: "Redemption approved",
+      related_entity_type: "redemption",
+    });
   });
 
   test("reject refund cycle restores the exact original balance", async () => {
@@ -255,6 +266,19 @@ describe("Redemptions API", () => {
       type: "credit",
       points: reward.points_cost,
       balance_after: originalBalance,
+    });
+
+    const notification = await prisma.notification.findFirst({
+      where: {
+        related_entity_id: redemptionResponse.body.id,
+        type: "redemption_rejected",
+      },
+    });
+
+    expect(notification).toMatchObject({
+      user_id: manager.id,
+      title: "Redemption rejected",
+      related_entity_type: "redemption",
     });
   });
 

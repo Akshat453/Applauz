@@ -1,4 +1,5 @@
 const prisma = require("../config/db");
+const { createNotification } = require("./notification.service");
 
 function createServiceError(message, statusCode) {
   const error = new Error(message);
@@ -179,6 +180,15 @@ async function approveRedemption({ redemptionId, approverUserId }) {
       },
     });
 
+    await createNotification(tx, {
+      userId: redemption.user_id,
+      type: "redemption_approved",
+      title: "Redemption approved",
+      message: `Your redemption request for ${redemption.reward.title} was approved.`,
+      relatedEntityType: "redemption",
+      relatedEntityId: redemption.id,
+    });
+
     return tx.redemption.findUnique({
       where: { id: redemptionId },
       include: buildRedemptionInclude(),
@@ -236,6 +246,15 @@ async function rejectRedemption({
           increment: redemption.points_spent,
         },
       },
+    });
+
+    await createNotification(tx, {
+      userId: redemption.user_id,
+      type: "redemption_rejected",
+      title: "Redemption rejected",
+      message: `Your redemption request for ${redemption.reward.title} was rejected.`,
+      relatedEntityType: "redemption",
+      relatedEntityId: redemption.id,
     });
 
     return tx.redemption.findUnique({

@@ -121,9 +121,10 @@ function RewardsCatalog() {
     <AppLayout
       title="Rewards Catalog"
       description="Browse active rewards and redeem them with your available points."
+      eyebrow="Redeem points"
       searchPlaceholder="Search rewards..."
     >
-      <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+      <div className="grid gap-4 rounded-xl border border-white/70 bg-white/70 p-4 shadow-panel md:grid-cols-[1fr_auto] md:items-end">
         <FormInput
           id="reward-search"
           label="Search rewards"
@@ -188,7 +189,7 @@ function RewardsCatalog() {
             return (
               <Card key={reward.id} className="overflow-hidden">
                 <RewardImage reward={reward} />
-                <div className="space-y-4 p-5">
+                <div className="space-y-4 p-5 md:p-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-2">
                       <Badge tone="default">{reward.category.replaceAll('_', ' ')}</Badge>

@@ -1,5 +1,5 @@
-import { ChevronDown, MessageSquare, Plus, ThumbsUp } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, Medal, Plus, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import AppLayout from '../components/AppLayout';
@@ -15,17 +15,17 @@ import { formatPoints, formatRelativeTime, initials } from '../utils/formatters'
 /* ---------- Feature cards for empty state ---------- */
 function FeatureCards() {
   const features = [
-    { icon: '👥', title: 'Team Building', desc: 'Boost morale by acknowledging collective efforts.' },
-    { icon: '🏅', title: 'Earn Points', desc: 'Senders and receivers can earn points for engagement.' },
-    { icon: '📈', title: 'Impact Insights', desc: 'See how recognition improves overall team sentiment.' },
+    { icon: Sparkles, title: 'Culture Visibility', desc: 'Keep meaningful work visible across teams and departments.' },
+    { icon: Medal, title: 'Reviewed Recognition', desc: 'Appreciation stays thoughtful because points are reviewed before approval.' },
+    { icon: ChevronDown, title: 'Shared Momentum', desc: 'Turn strong contributions into a visible, repeatable habit.' },
   ];
   return (
     <div className="grid w-full gap-4 sm:grid-cols-3">
       {features.map((f) => (
-        <div key={f.title} className="rounded-lg border border-line/60 bg-white p-5 text-left">
-          <span className="text-2xl">{f.icon}</span>
+        <div key={f.title} className="rounded-lg border border-line/60 bg-surfaceAlt p-5 text-left">
+          <f.icon className="h-5 w-5 text-primary" />
           <p className="mt-3 text-sm font-semibold text-primary">{f.title}</p>
-          <p className="mt-1 text-xs leading-5 text-ink/55">{f.desc}</p>
+          <p className="mt-1 text-sm leading-6 text-ink/55">{f.desc}</p>
         </div>
       ))}
     </div>
@@ -37,9 +37,8 @@ function RecognitionCard({ recognition }) {
   const approved = recognition.status === 'approved';
   return (
     <Card className="p-5 md:p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex gap-4">
-          {/* Avatars with connector */}
           <div className="flex w-12 shrink-0 flex-col items-center">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
               {initials(recognition.sender.name)}
@@ -52,33 +51,27 @@ function RecognitionCard({ recognition }) {
             </div>
           </div>
 
-          {/* Content */}
           <div className="space-y-3 min-w-0">
             <div>
-              <p className="text-base font-semibold text-ink">
+              <p className="text-lg font-semibold text-ink">
                 {recognition.sender.name} <span className="font-normal text-ink/55">recognized</span> {recognition.receiver.name}
               </p>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink/50">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink/50">
                 {recognition.category ? <Badge tone="default">{recognition.category.name}</Badge> : null}
                 <span>{formatRelativeTime(recognition.created_at)}</span>
               </div>
             </div>
-            <p className="rounded-lg bg-surface p-4 text-sm leading-6 text-ink/80 italic">
+            <p className="rounded-lg border border-line/60 bg-surfaceAlt p-4 text-sm leading-7 text-ink/80">
               &ldquo;{recognition.message}&rdquo;
             </p>
-            <div className="flex items-center gap-4 text-xs text-ink/55">
-              <span className="inline-flex items-center gap-1"><ThumbsUp className="h-4 w-4" />12 High Fives</span>
-              <span className="inline-flex items-center gap-1"><MessageSquare className="h-4 w-4" />3 Comments</span>
-            </div>
           </div>
         </div>
 
-        {/* Status + points */}
-        <div className="flex flex-row items-center gap-2 md:flex-col md:items-end">
+        <div className="flex flex-row items-center gap-2 lg:flex-col lg:items-end">
           <Badge tone={approved ? 'success' : 'warning'}>{recognition.status}</Badge>
           {approved && recognition.points_awarded != null ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-3 py-1 font-monoPoints text-sm font-semibold text-accent">
-              ⊕ {formatPoints(recognition.points_awarded)} pts
+              {formatPoints(recognition.points_awarded)} pts
             </span>
           ) : null}
         </div>
@@ -159,6 +152,7 @@ function RecognitionFeed() {
     <AppLayout
       title="Recognition Feed"
       description="Celebrate the achievements of your colleagues across the organization."
+      eyebrow="Company feed"
       actions={headerActions}
       searchPlaceholder="Search recognitions..."
     >

@@ -72,7 +72,7 @@ function SendAppreciation() {
   const selectedReceiverId = watch('receiverId');
 
   return (
-    <AppLayout title="Send Appreciation" description="Recognize a colleague's impact. Managers or HR review appreciation before any points are awarded." searchPlaceholder="Search people, teams, or awards...">
+    <AppLayout title="Send Appreciation" description="Recognize a colleague's impact. Managers or HR review appreciation before any points are awarded." eyebrow="Create recognition" searchPlaceholder="Search people, teams, or awards...">
       {loadingState === 'loading' ? (
         <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
           <LoadingSkeleton className="h-[520px]" />
@@ -84,22 +84,22 @@ function SendAppreciation() {
       ) : null}
       {loadingState === 'success' ? (
         <div className="grid gap-6 xl:grid-cols-[1.45fr_0.55fr]">
-          <Card className="p-5 md:p-6">
+          <Card className="p-6 md:p-7">
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
               <div className="grid gap-5 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-xs font-semibold uppercase tracking-[0.12em] text-ink/55" htmlFor="user-search">Select Recipient</label>
-                  <div className="flex items-center gap-2 rounded-sm border border-line bg-surface px-3 py-2">
+                  <div className="flex items-center gap-2 rounded-sm border border-line bg-white px-3 py-2">
                     <Search className="h-4 w-4 text-ink/35" />
                     <input id="user-search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink/35" placeholder="Search for a colleague..." />
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     {filteredUsers.map((user) => (
                       <button
                         key={user.id}
                         type="button"
                         onClick={() => setValue('receiverId', user.id, { shouldValidate: true })}
-                        className={`rounded-lg border p-3 text-left transition ${selectedReceiverId === user.id ? 'border-accent bg-accent/8 shadow-soft' : 'border-line bg-white hover:border-primary/30'}`}
+                        className={`rounded-lg border p-3 text-left transition ${selectedReceiverId === user.id ? 'border-accent bg-accent/8 shadow-soft' : 'border-line bg-white hover:border-primary/30 hover:bg-surfaceAlt'}`}
                       >
                         <div className="flex items-center gap-2">
                           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(user.name)}</div>
@@ -161,11 +161,11 @@ function SendAppreciation() {
             </form>
           </Card>
           <div className="space-y-4">
-            <Card className="bg-primary p-5 text-white">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55">Recognition Tip</p>
+            <Card className="bg-primary p-6 text-white">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">Recognition tip</p>
               <p className="mt-3 text-base leading-7">The strongest appreciation examples call out the action, the impact, and why it mattered to the team.</p>
             </Card>
-            <Card className="p-5">
+            <Card className="p-6">
               <h2 className="text-lg font-semibold text-primary">Selected category</h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Badge tone="outline">{selectedCategoryId ? categories.find((item) => item.id === selectedCategoryId)?.name : 'No category selected'}</Badge>

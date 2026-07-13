@@ -13,6 +13,7 @@ const verifyToken = require("./middleware/auth.middleware");
 const recognitionRoutes = require("./routes/recognition.routes");
 const rewardRoutes = require("./routes/reward.routes");
 const redemptionRoutes = require("./routes/redemption.routes");
+const notificationRoutes = require("./routes/notification.routes");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -134,6 +135,7 @@ app.get("/api/users", verifyToken, async (request, response) => {
 app.use("/api/recognitions", recognitionRoutes);
 app.use("/api/rewards", rewardRoutes);
 app.use("/api/redemptions", redemptionRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 module.exports = {
   app,

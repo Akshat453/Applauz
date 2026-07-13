@@ -69,6 +69,66 @@ describe("Recognition API", () => {
         name: "Teamwork",
       },
     });
+
+    const manager = await prisma.user.findUnique({
+      where: {
+        email: "manager@recognitionhub.local",
+      },
+    });
+    const notification = await prisma.notification.findFirst({
+      where: {
+        user_id: manager.id,
+        type: "recognition_review",
+      },
+      orderBy: {
+        created_at: "desc",
+      },
+    });
+
+    expect(notification).toMatchObject({
+      user_id: manager.id,
+      title: "New appreciation to review",
+      related_entity_type: "recognition",
+      related_entity_id: response.body.id,
+      is_read: false,
+    });
+  });
+
+  test("skips manager notification when the receiver has no manager", async () => {
+    const accessToken = await loginAs(
+      "elliot@recognitionhub.local",
+      "Employee1@123",
+      "10.0.1.1b",
+    );
+    const receiver = await prisma.user.findUnique({
+      where: {
+        email: "casey@recognitionhub.local",
+      },
+    });
+
+    await prisma.user.update({
+      where: { id: receiver.id },
+      data: { manager_id: null },
+    });
+
+    const response = await request(app)
+      .post("/api/recognitions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        receiverId: receiver.id,
+        message: "Thanks for unblocking the rollout.",
+      });
+
+    expect(response.status).toBe(201);
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        type: "recognition_review",
+        related_entity_id: response.body.id,
+      },
+    });
+
+    expect(notifications).toHaveLength(0);
   });
 
   test("rejects employee-suggested points on recognition creation", async () => {
@@ -256,6 +316,86 @@ describe("Recognition API", () => {
       .set("Authorization", `Bearer ${employeeToken}`);
 
     expect(response.status).toBe(403);
+  });
+
+  test("approval notifies both sender and receiver", async () => {
+    const [managerToken, sender, receiver] = await Promise.all([
+      loginAs("manager@recognitionhub.local", "Manager@123", "10.0.1.7"),
+      prisma.user.findUnique({ where: { email: "hr@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "elliot@recognitionhub.local" } }),
+    ]);
+
+    const recognition = await prisma.recognition.create({
+      data: {
+        sender_id: sender.id,
+        receiver_id: receiver.id,
+        message: "Great work on the launch checklist.",
+        status: "pending",
+        visibility: "public",
+      },
+    });
+
+    const response = await request(app)
+      .patch(`/api/recognitions/${recognition.id}/approve`)
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({ pointsAwarded: 125 });
+
+    expect(response.status).toBe(200);
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        related_entity_id: recognition.id,
+        type: "recognition_approved",
+      },
+      orderBy: {
+        user_id: "asc",
+      },
+    });
+
+    expect(notifications).toHaveLength(2);
+    expect(notifications.map((item) => item.user_id).sort()).toEqual(
+      [sender.id, receiver.id].sort(),
+    );
+  });
+
+  test("rejection notifies both sender and receiver", async () => {
+    const [managerToken, sender, receiver] = await Promise.all([
+      loginAs("manager@recognitionhub.local", "Manager@123", "10.0.1.8"),
+      prisma.user.findUnique({ where: { email: "hr@recognitionhub.local" } }),
+      prisma.user.findUnique({ where: { email: "elliot@recognitionhub.local" } }),
+    ]);
+
+    const recognition = await prisma.recognition.create({
+      data: {
+        sender_id: sender.id,
+        receiver_id: receiver.id,
+        message: "Needs more detail before approval.",
+        status: "pending",
+        visibility: "public",
+      },
+    });
+
+    const response = await request(app)
+      .patch(`/api/recognitions/${recognition.id}/reject`)
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({ rejectionReason: "Please add more context." });
+
+    expect(response.status).toBe(200);
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        related_entity_id: recognition.id,
+        type: "recognition_rejected",
+      },
+      orderBy: {
+        user_id: "asc",
+      },
+    });
+
+    expect(notifications).toHaveLength(2);
+    expect(notifications.map((item) => item.user_id).sort()).toEqual(
+      [sender.id, receiver.id].sort(),
+    );
   });
 
   test("returns 401 when recognition endpoints are accessed without auth", async () => {

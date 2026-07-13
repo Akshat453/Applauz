@@ -2,10 +2,10 @@ import Card from './Card';
 
 function StatCard({ label, value, accent, helper, icon: Icon, iconBg, change, changeTone }) {
   return (
-    <Card className={`p-6 ${accent ? 'bg-primary text-white' : 'bg-white'}`}>
+    <Card className={`p-5 md:p-6 ${accent ? 'bg-primary text-white' : ''}`}>
       <div className="flex items-start justify-between">
         {Icon ? (
-          <div className={`flex h-10 w-10 items-center justify-center rounded-sm ${iconBg || 'bg-primary/10 text-primary'}`}>
+          <div className={`flex h-11 w-11 items-center justify-center rounded-sm ${iconBg || 'bg-primary/10 text-primary'}`}>
             <Icon className="h-5 w-5" aria-hidden="true" />
           </div>
         ) : null}
@@ -15,9 +15,9 @@ function StatCard({ label, value, accent, helper, icon: Icon, iconBg, change, ch
           </span>
         ) : null}
       </div>
-      <p className={`mt-2 text-xs font-semibold uppercase tracking-[0.14em] ${accent ? 'text-white/70' : 'text-ink/50'}`}>{label}</p>
-      <p className={`mt-1 font-monoPoints text-3xl font-semibold ${accent ? 'text-[#AEE9F0]' : 'text-ink'}`}>{value}</p>
-      {helper ? <p className={`mt-1 text-xs ${accent ? 'text-white/80' : 'text-ink/55'}`}>{helper}</p> : null}
+      <p className={`mt-4 text-[11px] font-semibold uppercase tracking-[0.12em] ${accent ? 'text-white/65' : 'text-ink/45'}`}>{label}</p>
+      <p className={`mt-2 font-monoPoints text-3xl font-semibold ${accent ? 'text-[#AEE9F0]' : 'text-ink'}`}>{value}</p>
+      {helper ? <p className={`mt-2 text-sm leading-6 ${accent ? 'text-white/78' : 'text-ink/55'}`}>{helper}</p> : null}
     </Card>
   );
 }

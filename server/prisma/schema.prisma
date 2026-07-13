@@ -51,8 +51,25 @@ model User {
   managed_points_budgets PointBudget[]      @relation("ManagerPointsBudgets")
   redemptions            Redemption[]       @relation("RedemptionUser")
   approved_redemptions   Redemption[]       @relation("RedemptionApprover")
+  notifications          Notification[]
 
   @@map("users")
+}
+
+model Notification {
+  id                  String   @id @default(uuid()) @db.Uuid
+  user_id             String   @db.Uuid
+  type                String   @db.VarChar(50)
+  title               String   @db.VarChar(120)
+  message             String   @db.Text
+  related_entity_type String?  @db.VarChar(50)
+  related_entity_id   String?  @db.Uuid
+  is_read             Boolean  @default(false)
+  created_at          DateTime @default(now())
+  user                User     @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, created_at(sort: Desc)])
+  @@map("notifications")
 }
 
 model RecognitionCategory {

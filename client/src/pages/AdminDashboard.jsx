@@ -10,6 +10,7 @@ function AdminDashboard() {
     <AppLayout
       title="HR Analytics"
       description="This area is reserved for future analytics once the backend overview APIs are available."
+      eyebrow="Admin"
       searchPlaceholder="Search analytics..."
     >
       <EmptyState

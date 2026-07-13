@@ -1,4 +1,8 @@
 const prisma = require("../config/db");
+const {
+  createManyNotifications,
+  createNotification,
+} = require("./notification.service");
 
 const recognitionWriteHelpers = {
   async incrementManagerBudgetUsage({ tx, budgetId, pointsAwarded }) {
@@ -129,17 +133,32 @@ async function createRecognition({
     }
   }
 
-  return prisma.recognition.create({
-    data: {
-      sender_id: senderId,
-      receiver_id: receiverId,
-      category_id: categoryId ?? null,
-      message,
-      points_recommended: null,
-      status: "pending",
-      visibility: "public",
-    },
-    include: buildRecognitionInclude(),
+  return prisma.$transaction(async (tx) => {
+    const recognition = await tx.recognition.create({
+      data: {
+        sender_id: senderId,
+        receiver_id: receiverId,
+        category_id: categoryId ?? null,
+        message,
+        points_recommended: null,
+        status: "pending",
+        visibility: "public",
+      },
+      include: buildRecognitionInclude(),
+    });
+
+    if (recognition.receiver.manager_id) {
+      await createNotification(tx, {
+        userId: recognition.receiver.manager_id,
+        type: "recognition_review",
+        title: "New appreciation to review",
+        message: `${recognition.sender.name} recognized ${recognition.receiver.name}. Review this appreciation request.`,
+        relatedEntityType: "recognition",
+        relatedEntityId: recognition.id,
+      });
+    }
+
+    return recognition;
   });
 }
 
@@ -337,6 +356,25 @@ async function approveRecognition({
       },
     });
 
+    await createManyNotifications(tx, [
+      {
+        userId: recognition.sender_id,
+        type: "recognition_approved",
+        title: "Recognition approved",
+        message: `Your appreciation for ${recognition.receiver.name} was approved for ${pointsAwarded} points.`,
+        relatedEntityType: "recognition",
+        relatedEntityId: recognition.id,
+      },
+      {
+        userId: recognition.receiver_id,
+        type: "recognition_approved",
+        title: "Recognition approved",
+        message: `${recognition.sender.name}'s appreciation for you was approved for ${pointsAwarded} points.`,
+        relatedEntityType: "recognition",
+        relatedEntityId: recognition.id,
+      },
+    ]);
+
     return tx.recognition.findUnique({
       where: {
         id: recognitionId,
@@ -352,38 +390,49 @@ async function rejectRecognition({
   approverRoleName,
   rejectionReason,
 }) {
-  const recognition = await prisma.recognition.findUnique({
-    where: {
-      id: recognitionId,
-    },
-    include: buildRecognitionInclude(),
-  });
+  return prisma.$transaction(async (tx) => {
+    const recognition = await getRecognitionForReview({
+      tx,
+      recognitionId,
+    });
 
-  if (!recognition) {
-    throw createServiceError("RECOGNITION_NOT_FOUND", 404);
-  }
+    assertReviewerCanReviewRecognition({
+      recognition,
+      approverRoleName,
+      approverUserId,
+    });
 
-  if (recognition.status !== "pending") {
-    throw createServiceError("RECOGNITION_NOT_PENDING", 400);
-  }
+    await createManyNotifications(tx, [
+      {
+        userId: recognition.sender_id,
+        type: "recognition_rejected",
+        title: "Recognition rejected",
+        message: `Your appreciation for ${recognition.receiver.name} was rejected.`,
+        relatedEntityType: "recognition",
+        relatedEntityId: recognition.id,
+      },
+      {
+        userId: recognition.receiver_id,
+        type: "recognition_rejected",
+        title: "Recognition rejected",
+        message: `${recognition.sender.name}'s appreciation for you was rejected.`,
+        relatedEntityType: "recognition",
+        relatedEntityId: recognition.id,
+      },
+    ]);
 
-  assertReviewerCanReviewRecognition({
-    recognition,
-    approverRoleName,
-    approverUserId,
-  });
-
-  return prisma.recognition.update({
-    where: {
-      id: recognitionId,
-    },
-    data: {
-      status: "rejected",
-      rejection_reason: rejectionReason,
-      approver_id: approverUserId,
-      reviewed_at: new Date(),
-    },
-    include: buildRecognitionInclude(),
+    return tx.recognition.update({
+      where: {
+        id: recognitionId,
+      },
+      data: {
+        status: "rejected",
+        rejection_reason: rejectionReason,
+        approver_id: approverUserId,
+        reviewed_at: new Date(),
+      },
+      include: buildRecognitionInclude(),
+    });
   });
 }
 

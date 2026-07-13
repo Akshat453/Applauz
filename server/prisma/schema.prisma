@@ -26,29 +26,31 @@ model Department {
 }
 
 model User {
-  id                    String        @id @default(uuid()) @db.Uuid
-  employee_code         String        @unique @db.VarChar(50)
-  name                  String        @db.VarChar(120)
-  email                 String        @unique @db.VarChar(255)
-  password_hash         String
-  role_id               String        @db.Uuid
-  department_id         String?       @db.Uuid
-  manager_id            String?       @db.Uuid
-  points_balance        Int           @default(0)
-  avatar_url            String?       @db.VarChar(255)
-  status                String        @default("active") @db.VarChar(50)
-  created_at            DateTime      @default(now())
-  updated_at            DateTime      @default(now()) @updatedAt
-  role                  Role          @relation(fields: [role_id], references: [id])
-  department            Department?   @relation(fields: [department_id], references: [id])
-  manager               User?         @relation("ManagerReports", fields: [manager_id], references: [id])
-  direct_reports        User[]        @relation("ManagerReports")
-  recognitions_sent     Recognition[] @relation("RecognitionSender")
-  recognitions_received Recognition[] @relation("RecognitionReceiver")
-  recognitions_approved Recognition[] @relation("RecognitionApprover")
-  points_transactions   PointTransaction[] @relation("UserPointTransactions")
-  created_transactions  PointTransaction[] @relation("PointTransactionCreator")
-  managed_points_budgets PointBudget[] @relation("ManagerPointsBudgets")
+  id                     String             @id @default(uuid()) @db.Uuid
+  employee_code          String             @unique @db.VarChar(50)
+  name                   String             @db.VarChar(120)
+  email                  String             @unique @db.VarChar(255)
+  password_hash          String
+  role_id                String             @db.Uuid
+  department_id          String?            @db.Uuid
+  manager_id             String?            @db.Uuid
+  points_balance         Int                @default(0)
+  avatar_url             String?            @db.VarChar(255)
+  status                 String             @default("active") @db.VarChar(50)
+  created_at             DateTime           @default(now())
+  updated_at             DateTime           @default(now()) @updatedAt
+  role                   Role               @relation(fields: [role_id], references: [id])
+  department             Department?        @relation(fields: [department_id], references: [id])
+  manager                User?              @relation("ManagerReports", fields: [manager_id], references: [id])
+  direct_reports         User[]             @relation("ManagerReports")
+  recognitions_sent      Recognition[]      @relation("RecognitionSender")
+  recognitions_received  Recognition[]      @relation("RecognitionReceiver")
+  recognitions_approved  Recognition[]      @relation("RecognitionApprover")
+  points_transactions    PointTransaction[] @relation("UserPointTransactions")
+  created_transactions   PointTransaction[] @relation("PointTransactionCreator")
+  managed_points_budgets PointBudget[]      @relation("ManagerPointsBudgets")
+  redemptions            Redemption[]       @relation("RedemptionUser")
+  approved_redemptions   Redemption[]       @relation("RedemptionApprover")
 
   @@map("users")
 }
@@ -111,4 +113,37 @@ model PointBudget {
   manager          User     @relation("ManagerPointsBudgets", fields: [manager_id], references: [id])
 
   @@map("points_budget")
+}
+
+model RewardCatalog {
+  id             String       @id @default(uuid()) @db.Uuid
+  title          String       @db.VarChar(120)
+  description    String?      @db.Text
+  category       String       @db.VarChar(50)
+  points_cost    Int
+  stock_quantity Int?
+  image_url      String?      @db.VarChar(255)
+  is_active      Boolean      @default(true)
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @default(now()) @updatedAt
+  redemptions    Redemption[]
+
+  @@map("rewards_catalog")
+}
+
+model Redemption {
+  id               String        @id @default(uuid()) @db.Uuid
+  user_id          String        @db.Uuid
+  reward_id        String        @db.Uuid
+  points_spent     Int
+  status           String        @default("pending") @db.VarChar(50)
+  approved_by      String?       @db.Uuid
+  approved_at      DateTime?
+  rejection_reason String?       @db.Text
+  requested_at     DateTime      @default(now())
+  user             User          @relation("RedemptionUser", fields: [user_id], references: [id])
+  reward           RewardCatalog @relation(fields: [reward_id], references: [id])
+  approver         User?         @relation("RedemptionApprover", fields: [approved_by], references: [id])
+
+  @@map("redemptions")
 }

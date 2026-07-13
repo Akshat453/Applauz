@@ -6,12 +6,13 @@ const { z } = require("zod");
 
 const prisma = require("./config/db");
 const {
-  createAccessToken,
   loginUser,
   refreshAccessToken,
 } = require("./services/auth.service");
 const verifyToken = require("./middleware/auth.middleware");
 const recognitionRoutes = require("./routes/recognition.routes");
+const rewardRoutes = require("./routes/reward.routes");
+const redemptionRoutes = require("./routes/redemption.routes");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -55,18 +56,13 @@ app.post("/api/auth/login", loginLimiter, async (request, response) => {
 
   try {
     const result = await loginUser(parsedBody.data);
-
     return response.status(200).json(result);
   } catch (error) {
     if (error.message === "INVALID_CREDENTIALS") {
-      return response.status(401).json({
-        message: "invalid credentials",
-      });
+      return response.status(401).json({ message: "invalid credentials" });
     }
 
-    return response.status(500).json({
-      message: "Internal server error",
-    });
+    return response.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -82,20 +78,15 @@ app.post("/api/auth/refresh", async (request, response) => {
 
   try {
     const accessToken = await refreshAccessToken(parsedBody.data.refreshToken);
-
     return response.status(200).json({ accessToken });
   } catch (_error) {
-    return response.status(401).json({
-      message: "Invalid refresh token",
-    });
+    return response.status(401).json({ message: "Invalid refresh token" });
   }
 });
 
 app.get("/api/users/me", verifyToken, async (request, response) => {
   const user = await prisma.user.findUnique({
-    where: {
-      id: request.user.userId,
-    },
+    where: { id: request.user.userId },
     include: {
       role: true,
       department: true,
@@ -103,9 +94,7 @@ app.get("/api/users/me", verifyToken, async (request, response) => {
   });
 
   if (!user) {
-    return response.status(404).json({
-      message: "User not found",
-    });
+    return response.status(404).json({ message: "User not found" });
   }
 
   return response.status(200).json({
@@ -126,17 +115,11 @@ app.get("/api/users/me", verifyToken, async (request, response) => {
 app.get("/api/users", verifyToken, async (request, response) => {
   const users = await prisma.user.findMany({
     where: {
-      id: {
-        not: request.user.userId,
-      },
+      id: { not: request.user.userId },
       status: "active",
     },
-    orderBy: {
-      name: "asc",
-    },
-    include: {
-      department: true,
-    },
+    orderBy: { name: "asc" },
+    include: { department: true },
   });
 
   return response.status(200).json({
@@ -149,6 +132,8 @@ app.get("/api/users", verifyToken, async (request, response) => {
 });
 
 app.use("/api/recognitions", recognitionRoutes);
+app.use("/api/rewards", rewardRoutes);
+app.use("/api/redemptions", redemptionRoutes);
 
 module.exports = {
   app,
